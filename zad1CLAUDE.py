@@ -21,7 +21,7 @@ class SparseMatrix:
     
     def __setitem__(self, key, value):
         r, c = key
-        if abs(value) > 1e-10:  # zapisujemy tylko wartości niezerowe
+        if abs(value) is not 0:  # zapisujemy tylko wartości niezerowe
             self.elements[(r, c)] = value
         elif (r, c) in self.elements:
             del self.elements[(r, c)]
@@ -528,6 +528,7 @@ def visualize_potential(phi, h, L, title="Funkcja potencjału"):
     plt.xlim(0, L)
     plt.ylim(-h, 0)
     plt.grid(alpha=0.3)
+    plt.savefig('potentials.png')
     plt.show()
 
 def compare_methods(N_values, h, L, T, H, g):
@@ -640,10 +641,9 @@ def compare_methods(N_values, h, L, T, H, g):
     
     return results
 
-
 def animate_wave_with_particles(N, h, L, T, H, g, duration=2.0, fps=15, particles=20):
     """
-    Tworzy animację fali z wizualizacją ruchu cząstek płynu.
+    Tworzy animację fali z wizualizacją ruchu cząstek płynu, bez pokazywania potencjału.
     
     Parametry:
     ----------
@@ -681,38 +681,9 @@ def animate_wave_with_particles(N, h, L, T, H, g, duration=2.0, fps=15, particle
     def update(frame):
         t = (frame / num_frames) * T  # czas w sekundach
         
-        # Rozwiązanie dla danego czasu
-        phi, _ = solve_wave_potential(N, h, L, T, H, g, t, use_sparse=True, use_library=True)
-        
-        # Przygotowanie danych do wizualizacji potencjału
-        x_values = []
-        z_values = []
-        phi_values = []
-        
-        for (x, z), val in phi.items():
-            x_values.append(x)
-            z_values.append(z)
-            phi_values.append(val)
-        
-        # Tworzenie siatki dla wykresu konturowego
-        x_unique = sorted(list(set(x_values)))
-        z_unique = sorted(list(set(z_values)))
-        X, Z = np.meshgrid(x_unique, z_unique)
-        
-        # Wypełnianie siatki wartościami potencjału
-        PHI = np.zeros_like(X)
-        for i, z in enumerate(z_unique):
-            for j, x in enumerate(x_unique):
-                if (x, z) in phi:
-                    PHI[i, j] = phi[(x, z)]
-        
         # Czyszczenie wykresów
         ax1.clear()
         ax2.clear()
-        
-        # Rysowanie potencjału
-        contour = ax1.contourf(X, Z, PHI, 50, cmap='viridis')
-        fig.colorbar(contour, ax=ax1, label='Potencjał φ')
         
         # Obliczanie pozycji cząstek w czasie t
         particle_positions = []
@@ -734,18 +705,23 @@ def animate_wave_with_particles(N, h, L, T, H, g, duration=2.0, fps=15, particle
                 
             particle_positions.append((x, z))
         
-        # Rysowanie cząstek
-        particle_x, particle_z = zip(*particle_positions)
-        ax1.scatter(particle_x, particle_z, c='red', s=20, alpha=0.6)
-        
         # Rysowanie powierzchni wody
         surface_x = np.linspace(0, L, 100)
         # Wzór na przesunięcie powierzchni: ζ(x,t) = (H/2) * cos(kx - ωt)
         surface_z = (H/2) * np.cos(k * surface_x - omega * t)
-        ax1.plot(surface_x, surface_z, 'b-', linewidth=2)
         
-        # Ustawienia wykresu potencjału
-        ax1.set_title(f'Funkcja potencjału i ruch cząstek, t = {t:.2f} s')
+        # Obszar wody
+        ax1.fill_between(surface_x, surface_z, -h, color='lightblue', alpha=0.4)
+        
+        # Rysowanie powierzchni wody
+        ax1.plot(surface_x, surface_z, 'b-', linewidth=3)
+        
+        # Rysowanie cząstek
+        particle_x, particle_z = zip(*particle_positions)
+        ax1.scatter(particle_x, particle_z, c='red', s=25, alpha=0.8)
+        
+        # Ustawienia wykresu fali
+        ax1.set_title(f'Falowanie i ruch cząstek, t = {t:.2f} s')
         ax1.set_xlabel('x [m]')
         ax1.set_ylabel('z [m]')
         ax1.axhline(y=0, color='black', linestyle='--', alpha=0.5)  # powierzchnia morza (średni poziom)
@@ -754,8 +730,10 @@ def animate_wave_with_particles(N, h, L, T, H, g, duration=2.0, fps=15, particle
         ax1.set_ylim(-h, H)
         ax1.grid(alpha=0.3)
         
-        # Wykres powierzchni fali w czasie
-        ax2.plot(surface_x, surface_z, 'b-', linewidth=2)
+        # Wykres profilu powierzchni fali
+        ax2.plot(surface_x, surface_z, 'b-', linewidth=3)
+        ax2.axhline(y=0, color='black', linestyle='--', alpha=0.5)  # średni poziom wody
+        ax2.fill_between(surface_x, surface_z, -H, color='lightblue', alpha=0.4)
         ax2.set_title('Profil powierzchni fali')
         ax2.set_xlabel('x [m]')
         ax2.set_ylabel('ζ [m]')
@@ -763,13 +741,13 @@ def animate_wave_with_particles(N, h, L, T, H, g, duration=2.0, fps=15, particle
         ax2.set_ylim(-H, H)
         ax2.grid(alpha=0.3)
         
-        return contour,
+        return ax1, ax2
     
     # Tworzenie animacji
     ani = FuncAnimation(fig, update, frames=num_frames, blit=False)
     plt.tight_layout()
     
-    # Zapisanie animacji do pliku (opcjonalnie)
+    # Zapisanie animacji do pliku
     try:
         ani.save('wave_animation.gif', writer='pillow', fps=fps)
         print("Animacja zapisana jako 'wave_animation.gif'")
@@ -784,8 +762,8 @@ def main():
     h = 10.0      # głębokość morza [m]
     L = 50.0      # długość fali [m]
     T = 5.0       # okres fali [s]
-    H = 0.5       # wysokość fali [m]
-    g = 9.81      # przyspieszenie ziemskie [m/s²]
+    H = 0.5        # wysokość fali [m]
+    g = 9.81       # przyspieszenie ziemskie [m/s²]
     
     print("=== IMPLEMENTACJA METODY ELIMINACJI GAUSSA Z CZĘŚCIOWYM WYBOREM ELEMENTU PODSTAWOWEGO ===")
     
@@ -840,6 +818,7 @@ def main():
     print("\n[Zadanie 4] Porównanie z implementacją biblioteczną")
     compare_methods([5, 8, 10], h, L, T, H, g)  # Zmniejszamy N do bezpiecznych wartości
     
+    visualize_potential(phi,h,L)
     # Zadanie 5: Animacja
     print("\n[Zadanie 5] Tworzenie animacji")
     choice = input("Czy chcesz utworzyć animację? (t/n): ")

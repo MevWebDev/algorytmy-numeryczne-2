@@ -6,7 +6,7 @@ def gauss_elimination_with_partial_pivoting():
     
     # Inicjalizacja macierzy rozszerzonej
     a = np.zeros((n, n+1))
-    
+        
     # Wczytanie współczynników
     print("Wprowadź współczynniki równań (oddzielone spacją, np. '1 2 3' dla 1x + 2y = 3):")
     for i in range(n):
