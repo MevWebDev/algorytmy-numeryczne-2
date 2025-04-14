@@ -5,11 +5,9 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import scipy.sparse.linalg as spla
 
+
 class SparseMatrix:
-    """
-    Implementacja macierzy rzadkiej przy użyciu słownika.
-    Klucze to pary (wiersz, kolumna), wartości to elementy niezerowe.
-    """
+   
     def __init__(self, n_rows, n_cols):
         self.n_rows = n_rows
         self.n_cols = n_cols
@@ -19,20 +17,19 @@ class SparseMatrix:
         return self.elements.get(key, 0.0)
     
     def __setitem__(self, key, value):
-        if abs(value) is not 0:  # zapisujemy tylko wartości niezerowe
+        if abs(value) != 0: 
             self.elements[key] = value
         elif key in self.elements:
             del self.elements[key]
     
     def to_numpy(self):
-        """Konwertuje macierz rzadką do formatu numpy."""
         result = np.zeros((self.n_rows, self.n_cols))
         for (r, c), value in self.elements.items():
             result[r, c] = value
         return result
     
     def to_scipy_sparse(self):
-        """Konwertuje macierz rzadką do formatu scipy.sparse."""
+    
         rows, cols, data = [], [], []
         for (r, c), value in self.elements.items():
             rows.append(r)
@@ -41,20 +38,12 @@ class SparseMatrix:
         return csr_matrix((data, (rows, cols)), shape=(self.n_rows, self.n_cols))
     
     def copy(self):
-        """Tworzy głęboką kopię macierzy rzadkiej."""
+       
         new_matrix = SparseMatrix(self.n_rows, self.n_cols)
         new_matrix.elements = self.elements.copy()
         return new_matrix
     
 def sparse_matrix_stats(matrix):
-    """
-    Wyświetla statystyki macierzy rzadkiej.
-    
-    Parametry:
-    ----------
-    matrix : SparseMatrix
-        Analizowana macierz rzadka.
-    """
     total_elements = matrix.n_rows * matrix.n_cols
     nonzero_elements = len(matrix.elements)
     sparsity = 100 * (1 - nonzero_elements / total_elements)
@@ -65,7 +54,6 @@ def sparse_matrix_stats(matrix):
     print(f"Współczynnik rzadkości: {sparsity:.2f}%")
     print(f"Oszczędność pamięci: {total_elements - nonzero_elements} elementów")
     
-    # Średnia liczba niezerowych elementów w wierszu
     row_counts = {}
     for (r, _) in matrix.elements:
         row_counts[r] = row_counts.get(r, 0) + 1
@@ -75,23 +63,6 @@ def sparse_matrix_stats(matrix):
         print(f"Średnia liczba niezerowych elementów na wiersz: {avg_per_row:.2f}")
 
 def gauss_elimination_with_partial_pivoting(A, b, use_sparse=False):
-    """
-    Rozwiązuje układ równań Ax = b metodą eliminacji Gaussa z częściowym wyborem elementu podstawowego.
-    
-    Parametry:
-    ----------
-    A : ndarray lub SparseMatrix
-        Macierz współczynników układu równań.
-    b : ndarray
-        Wektor wyrazów wolnych.
-    use_sparse : bool, optional
-        Czy używać zoptymalizowanej implementacji dla macierzy rzadkich.
-        
-    Zwraca:
-    -------
-    ndarray
-        Wektor rozwiązań układu równań.
-    """
     if use_sparse and not isinstance(A, SparseMatrix):
         # Konwersja do formatu rzadkiego jeśli potrzeba
         sparse_A = SparseMatrix(len(b), len(b))
@@ -114,7 +85,7 @@ def gauss_elimination_with_partial_pivoting(A, b, use_sparse=False):
         # Sprawdzamy wymiary A
         if isinstance(A, np.ndarray):
             if A.ndim == 1:
-                # do poprawienia caly case
+                #case maciez 1 wymiar
                 if A.shape[1] != n:
                     raise ValueError(f"Niekompatybilne wymiary: Wektor A ma długość {A.shape[1]}, a wektor b ma długość {n}")
                 # Tworzymy macierz o odpowiednich wymiarach
@@ -127,10 +98,8 @@ def gauss_elimination_with_partial_pivoting(A, b, use_sparse=False):
         # Tworzenie macierzy rozszerzonej [A|b]
         Ab = np.column_stack((A.copy(), b.copy()))
     else:
-        # Dla macierzy rzadkiej, będziemy operować bezpośrednio na A i b
         b_copy = b.copy()
     
-    # Eliminacja Gaussa z częściowym wyborem elementu podstawowego
     for i in range(n):
         # Znajdź wiersz z największym elementem w kolumnie i
         if use_sparse:
@@ -143,8 +112,7 @@ def gauss_elimination_with_partial_pivoting(A, b, use_sparse=False):
                     max_row = k
         else:
             max_row = i + np.argmax(np.abs(Ab[i:, i]))
-        
-        # Zamiana wierszy jeśli potrzeba
+    
         if max_row != i:
             if use_sparse:
                 # Zamiana w macierzy rzadkiej - zamieniamy tylko niezerowe elementy
@@ -160,24 +128,21 @@ def gauss_elimination_with_partial_pivoting(A, b, use_sparse=False):
             else:
                 Ab[[i, max_row]] = Ab[[max_row, i]]
         
-        # Sprawdzenie czy macierz jest osobliwa
         if use_sparse:
             if abs(A[i, i]) < 1e-10:
-                raise ValueError("Macierz jest osobliwa - układ może nie mieć rozwiązania")
+                raise ValueError("Macierz jest osobliwa")
         else:
             if abs(Ab[i, i]) < 1e-10:
-                raise ValueError("Macierz jest osobliwa - układ może nie mieć rozwiązania")
-        
-        # Eliminacja dla wierszy poniżej i-tego
+                raise ValueError("Macierz jest osobliwa")
         for j in range(i+1, n):
             if use_sparse:
                 # Obliczenie współczynnika
-                if abs(A[j, i]) < 1e-10:  # jeśli element jest już zerem, pomijamy
+                if abs(A[j, i]) < 1e-10:  # jesli 0 to skip
                     continue
                 factor = A[j, i] / A[i, i]
                 
                 # Aktualizacja wiersza j
-                A[j, i] = 0.0  # zerujemy element pod główną przekątną
+                A[j, i] = 0.0  # zerujemy element pod przekatna
                 for k in range(i+1, n):
                     A[j, k] -= factor * A[i, k]
                 b_copy[j] -= factor * b_copy[i]
@@ -198,37 +163,8 @@ def gauss_elimination_with_partial_pivoting(A, b, use_sparse=False):
             x[i] = (Ab[i, -1] - np.sum(Ab[i, i+1:-1] * x[i+1:])) / Ab[i, i]
     
     return x
-
 def build_wave_equations(N, h, L, T, H, g, t=0):
-    """
-    Buduje układ równań opisujących falowanie na morzu.
     
-    Parametry:
-    ----------
-    N : int
-        Liczba podziałów siatki w kierunku x i z.
-    h : float
-        Głębokość morza.
-    L : float
-        Długość fali.
-    T : float
-        Okres fali.
-    H : float
-        Wysokość fali.
-    g : float
-        Przyspieszenie ziemskie.
-    t : float, optional
-        Czas, dla którego rozwiązujemy równanie.
-        
-    Zwraca:
-    -------
-    A : SparseMatrix
-        Macierz współczynników układu równań.
-    b : ndarray
-        Wektor wyrazów wolnych.
-    point_to_index : dict
-        Słownik mapujący punkty siatki (x, z) na indeksy w układzie równań.
-    """
     # Liczba falowa i częstotliwość kołowa
     k = 2 * np.pi / L
     omega = 2 * np.pi / T
@@ -237,13 +173,13 @@ def build_wave_equations(N, h, L, T, H, g, t=0):
     dx = L / N
     dz = h / N
     
-    # Tworzenie siatki punktów
+    # Tworzenie siatki
     points = []
     for i in range(N+1):  # punkty w kierunku x
         for j in range(N+1):  # punkty w kierunku z
             x = i * dx
             z = -h + j * dz
-            # Pomijamy punkty poza obszarem
+            # skip poza
             if z <= 0 and z >= -h and x >= 0 and x <= L:
                 points.append((x, z))
     
@@ -251,25 +187,24 @@ def build_wave_equations(N, h, L, T, H, g, t=0):
     point_to_index = {point: idx for idx, point in enumerate(points)}
     n = len(points)
     
-    # Inicjalizacja macierzy współczynników i wektora wyrazów wolnych
+    # tworzymy matrix i wektor b 
     A = SparseMatrix(n, n)
     b = np.zeros(n)
 
-    # Dodajemy mały współczynnik regularyzacyjny do elementów diagonalnych
     epsilon = 1e-10
     
-    # Budowanie równań dla każdego punktu siatki
+  # budowanie dla punktow 
     for point, idx in point_to_index.items():
         x, z = point
         
-        # Sprawdzenie czy punkt jest na brzegu
-        is_surface = abs(z) < 1e-10  # powierzchnia morza (z=0)
-        is_bottom = abs(z + h) < 1e-10  # dno morza (z=-h)
-        is_side = abs(x) < 1e-10 or abs(x - L) < 1e-10  # boki obszaru
+        # Sprawdzenie gdzie punkt
+        is_surface = abs(z) < 1e-10  
+        is_bottom = abs(z + h) < 1e-10 
+        is_side = abs(x) < 1e-10 or abs(x - L) < 1e-10  
         
         if is_surface:
             # Warunek brzegowy na powierzchni: (∂²φ/∂t²) + g(∂φ/∂z) = 0
-            # Dokładniej: aproksymujemy pierwszą pochodną po z różnicą skierowaną w dół
+            # aproksymujemy pochodna  z dolem 
             point_below = (x, z - dz)
             if point_below in point_to_index:
                 idx_below = point_to_index[point_below]
@@ -280,7 +215,7 @@ def build_wave_equations(N, h, L, T, H, g, t=0):
                 analytic_val = -g * (g * H / (2 * omega)) * np.sin(k * x - omega * t)
                 b[idx] = analytic_val * dz
             else:
-                # Gdy punkt poniżej nie istnieje, stosujemy wartość dokładną
+                #  nie ma ponizej to analityic
                 A[idx, idx] = 1.0 + epsilon
                 analytic_val = (g * H / (2 * omega)) * np.sin(k * x - omega * t)
                 b[idx] = analytic_val
@@ -290,7 +225,7 @@ def build_wave_equations(N, h, L, T, H, g, t=0):
             point_above = (x, z + dz)
             if point_above in point_to_index:
                 idx_above = point_to_index[point_above]
-                A[idx, idx] = -1.0 + epsilon  # Dodajemy regularyzację
+                A[idx, idx] = -1.0 + epsilon 
                 A[idx, idx_above] = 1.0
                 b[idx] = 0.0
             else:
@@ -299,8 +234,7 @@ def build_wave_equations(N, h, L, T, H, g, t=0):
                 b[idx] = analytic_val
                 
         elif is_side:
-            # Na bocznych granicach używamy wartości analitycznej
-            A[idx, idx] = 1.0 + epsilon  # Dodajemy regularyzację
+            A[idx, idx] = 1.0 + epsilon  
             analytic_val = (g * H / (2 * omega)) * (np.cosh(k * (z + h)) / np.cosh(k * h)) * np.sin(k * x - omega * t)
             b[idx] = analytic_val
             
@@ -311,7 +245,7 @@ def build_wave_equations(N, h, L, T, H, g, t=0):
             point_down = (x, z - dz)
             point_up = (x, z + dz)
             
-            # Sprawdzamy czy sąsiednie punkty istnieją w siatce
+            # Sprawdzamy czy sasieady w siatce
             neighbors = []
             if point_left in point_to_index:
                 neighbors.append((point_to_index[point_left], 1.0))
@@ -322,107 +256,50 @@ def build_wave_equations(N, h, L, T, H, g, t=0):
             if point_up in point_to_index:
                 neighbors.append((point_to_index[point_up], 1.0))
                 
-            # Współczynnik przy centralnym punkcie to minus suma pozostałych
+            # Współczynnik przy centralnym punkcie
             A[idx, idx] = -len(neighbors) + epsilon  # Dodajemy regularyzację
             
-            # Współczynniki przy sąsiednich punktach
+            # sasiady
             for neighbor_idx, coef in neighbors:
                 A[idx, neighbor_idx] = coef
                 
-            # Prawa strona równania
+            # wyniki
             b[idx] = 0.0
     
     return A, b, point_to_index
 
 def solve_wave_potential(N, h, L, T, H, g, t=0, use_sparse=True, use_library=False):
-    """
-    Rozwiązuje układ równań opisujących falowanie na morzu.
-    
-    Parametry:
-    ----------
-    N : int
-        Liczba podziałów siatki.
-    h, L, T, H, g : float
-        Parametry fizyczne fali.
-    t : float, optional
-        Czas, dla którego rozwiązujemy równanie.
-    use_sparse : bool, optional
-        Czy używać zoptymalizowanej implementacji dla macierzy rzadkich.
-    use_library : bool, optional
-        Czy używać bibliotecznej implementacji rozwiązywania układu równań.
-        
-    Zwraca:
-    -------
-    phi : dict
-        Słownik mapujący punkty siatki (x, z) na wartości potencjału.
-    time_taken : float
-        Czas wykonania obliczeń.
-    """
+
     start_time = time.time()
     
-    # Budowanie układu równań
+    # budowanie ukladu rownan
     A, b, point_to_index = build_wave_equations(N, h, L, T, H, g, t)
     
-    # Rozwiązywanie układu równań
+    # rozwiazanie
     if use_library:
-        # Używamy biblioteki scipy do rozwiązania układu
+        
         A_scipy = A.to_scipy_sparse()
         try:
             phi_values = spla.spsolve(A_scipy, b)
         except Warning:
-            # Ignorujemy ostrzeżenia o osobliwości i używamy alternatywnej metody
             phi_values = spla.lsqr(A_scipy, b)[0]
     else:
-        # Używamy własnej implementacji eliminacji Gaussa
+        # U
         phi_values = gauss_elimination_with_partial_pivoting(A, b, use_sparse=use_sparse)
     
-    # Mapowanie wyników na punkty siatki
+    # mapowanie na siatke
     phi = {point: phi_values[idx] for point, idx in point_to_index.items()}
     
     time_taken = time.time() - start_time
     return phi, time_taken
 
 def analytic_solution(x, z, t, h, L, T, H, g):
-    """
-    Oblicza analityczne rozwiązanie funkcji potencjału dla fali.
-    
-    Parametry:
-    ----------
-    x, z, t : float
-        Współrzędne punktu i czas.
-    h, L, T, H, g : float
-        Parametry fizyczne fali.
-        
-    Zwraca:
-    -------
-    float
-        Wartość potencjału w punkcie (x, z) w czasie t.
-    """
     k = 2 * np.pi / L
     omega = 2 * np.pi / T
     
     return (g * H / (2 * omega)) * (np.cosh(k * (z + h)) / np.cosh(k * h)) * np.sin(k * x - omega * t)
 
 def compare_with_analytic(phi, h, L, T, H, g, t=0):
-    """
-    Porównuje numeryczne rozwiązanie z rozwiązaniem analitycznym.
-    
-    Parametry:
-    ----------
-    phi : dict
-        Słownik mapujący punkty siatki (x, z) na wartości potencjału.
-    h, L, T, H, g : float
-        Parametry fizyczne fali.
-    t : float, optional
-        Czas, dla którego rozwiązujemy równanie.
-        
-    Zwraca:
-    -------
-    float
-        Maksymalny błąd bezwzględny.
-    float
-        Średni błąd bezwzględny.
-    """
     errors = []
     
     for (x, z), phi_num in phi.items():
@@ -436,13 +313,10 @@ def compare_with_analytic(phi, h, L, T, H, g, t=0):
     return max_error, mean_error
 
 def analyze_errors(phi, h, L, T, H, g, t=0):
-    """
-    Analizuje rozkład błędów w przestrzeni.
-    """
+   
     errors = {}
     max_error = 0
     max_error_point = None
-    
     for (x, z), phi_num in phi.items():
         phi_analytic = analytic_solution(x, z, t, h, L, T, H, g)
         error = abs(phi_num - phi_analytic)
@@ -454,17 +328,17 @@ def analyze_errors(phi, h, L, T, H, g, t=0):
     
     print(f"Maksymalny błąd: {max_error:.6e} w punkcie {max_error_point}")
     
-    # Analiza błędów w zależności od głębokości
+    
     depth_errors = {}
     for (x, z), error in errors.items():
-        depth = round(-z, 3)  # głębokość jako dodatnia wartość
+        depth = round(-z, 3)  #
         if depth not in depth_errors:
             depth_errors[depth] = []
         depth_errors[depth].append(error)
     
     avg_errors = {depth: sum(errs)/len(errs) for depth, errs in depth_errors.items()}
     
-    # Wykres błędów w zależności od głębokości
+    
     depths = sorted(avg_errors.keys())
     avg_error_values = [avg_errors[d] for d in depths]
     
@@ -479,19 +353,7 @@ def analyze_errors(phi, h, L, T, H, g, t=0):
     return errors
 
 def visualize_potential(phi, h, L, title="Funkcja potencjału"):
-    """
-    Wizualizuje funkcję potencjału na siatce.
     
-    Parametry:
-    ----------
-    phi : dict
-        Słownik mapujący punkty siatki (x, z) na wartości potencjału.
-    h, L : float
-        Głębokość morza i długość fali.
-    title : str, optional
-        Tytuł wykresu.
-    """
-    # Przygotowanie danych do wizualizacji
     x_values = []
     z_values = []
     phi_values = []
@@ -501,27 +363,26 @@ def visualize_potential(phi, h, L, title="Funkcja potencjału"):
         z_values.append(z)
         phi_values.append(val)
     
-    # Tworzenie siatki dla wykresu konturowego
+    # siatka
     x_unique = sorted(list(set(x_values)))
     z_unique = sorted(list(set(z_values)))
     X, Z = np.meshgrid(x_unique, z_unique)
     
-    # Wypełnianie siatki wartościami potencjału
+    
     PHI = np.zeros_like(X)
     for i, z in enumerate(z_unique):
         for j, x in enumerate(x_unique):
             if (x, z) in phi:
                 PHI[i, j] = phi[(x, z)]
     
-    # Tworzenie wykresu
     plt.figure(figsize=(10, 6))
     contour = plt.contourf(X, Z, PHI, 50, cmap='viridis')
     plt.colorbar(contour, label='Potencjał φ')
     plt.title(title)
     plt.xlabel('x')
     plt.ylabel('z')
-    plt.axhline(y=0, color='black', linestyle='--', alpha=0.5)  # powierzchnia morza
-    plt.axhline(y=-h, color='black', linestyle='-', alpha=0.7)  # dno morza
+    plt.axhline(y=0, color='black', linestyle='--', alpha=0.5)  
+    plt.axhline(y=-h, color='black', linestyle='-', alpha=0.7) 
     plt.xlim(0, L)
     plt.ylim(-h, 0)
     plt.grid(alpha=0.3)
@@ -529,24 +390,13 @@ def visualize_potential(phi, h, L, title="Funkcja potencjału"):
     plt.show()
 
 def compare_methods(N_values, h, L, T, H, g):
-    """
-    Porównuje różne metody rozwiązywania układu równań.
-    
-    Parametry:
-    ----------
-    N_values : list
-        Lista wartości N (liczba podziałów siatki) do przetestowania.
-    h, L, T, H, g : float
-        Parametry fizyczne fali.
-    """
+ 
     results = []
     
     for N in N_values:
         print(f"\nTestowanie dla N = {N}...")
-        
-        # Własna implementacja bez optymalizacji dla macierzy rzadkich
-        # Tylko dla małych N próbujemy gęstej implementacji
-        if N <= 10:  # Ustal odpowiedni próg
+    
+        if N <= 10:  
             try:
                 start_time = time.time()
                 phi_dense, _ = solve_wave_potential(N, h, L, T, H, g, 
@@ -561,12 +411,11 @@ def compare_methods(N_values, h, L, T, H, g):
                 max_error_dense = float('inf')
                 mean_error_dense = float('inf')
         else:
-            print(f"Pomijam gęstą implementację dla N={N} (zbyt duże wymiary)")
             time_dense = float('inf')
             max_error_dense = float('inf')
             mean_error_dense = float('inf')
         
-        # Własna implementacja z optymalizacją dla macierzy rzadkich
+        # wlasna
         try:
             start_time = time.time()
             phi_sparse, _ = solve_wave_potential(N, h, L, T, H, g, 
@@ -605,64 +454,16 @@ def compare_methods(N_values, h, L, T, H, g):
             'error_sparse': max_error_sparse,
             'error_lib': max_error_lib
         })
-    
-    # Wizualizacja wyników
-    plt.figure(figsize=(12, 10))
-    
-    # Wykres czasu wykonania
-    plt.subplot(2, 1, 1)
-    plt.plot([r['N'] for r in results], [r['time_dense'] for r in results], 'o-', label='Własna (gęsta)')
-    plt.plot([r['N'] for r in results], [r['time_sparse'] for r in results], 's-', label='Własna (rzadka)')
-    plt.plot([r['N'] for r in results], [r['time_lib'] for r in results], '^-', label='Biblioteczna')
-    plt.xlabel('Rozmiar siatki (N)')
-    plt.ylabel('Czas wykonania [s]')
-    plt.title('Porównanie czasu wykonania różnych implementacji')
-    plt.legend()
-    plt.grid(alpha=0.3)
-    
-    # Wykres błędu
-    plt.subplot(2, 1, 2)
-    plt.plot([r['N'] for r in results], [r['error_dense'] for r in results], 'o-', label='Własna (gęsta)')
-    plt.plot([r['N'] for r in results], [r['error_sparse'] for r in results], 's-', label='Własna (rzadka)')
-    plt.plot([r['N'] for r in results], [r['error_lib'] for r in results], '^-', label='Biblioteczna')
-    plt.xlabel('Rozmiar siatki (N)')
-    plt.ylabel('Maksymalny błąd')
-    plt.yscale('log')
-    plt.title('Porównanie dokładności różnych implementacji')
-    plt.legend()
-    plt.grid(alpha=0.3)
-    
-    plt.tight_layout()
-    plt.savefig('comparison_methods.png')
-    plt.show()
-    
+  
     return results
 
 def animate_wave_with_particles(N, h, L, T, H, g, duration=2.0, fps=15, particles=20):
-    """
-    Tworzy animację fali z wizualizacją ruchu cząstek płynu, bez pokazywania potencjału.
-    
-    Parametry:
-    ----------
-    N : int
-        Liczba podziałów siatki.
-    h, L, T, H, g : float
-        Parametry fizyczne fali.
-    duration : float, optional
-        Czas trwania animacji w sekundach.
-    fps : int, optional
-        Liczba klatek na sekundę.
-    particles : int, optional
-        Liczba cząstek do wizualizacji.
-    """
-    # Liczba klatek i parametry fali
     num_frames = int(duration * fps)
     k = 2 * np.pi / L
     omega = 2 * np.pi / T
     
-    # Inicjalizacja cząstek płynu
     particle_x = np.linspace(0, L, particles)
-    particle_z = np.linspace(-h, -0.05, 5)  # Różne głębokości
+    particle_z = np.linspace(-h, -0.05, 5)  
     particle_X, particle_Z = np.meshgrid(particle_x, particle_z)
     particle_X = particle_X.flatten()
     particle_Z = particle_Z.flatten()
@@ -674,27 +475,22 @@ def animate_wave_with_particles(N, h, L, T, H, g, duration=2.0, fps=15, particle
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), 
                                   gridspec_kw={'height_ratios': [3, 1]})
     
-    # Funkcja aktualizująca animację
     def update(frame):
         t = (frame / num_frames) * T  # czas w sekundach
-        
-        # Czyszczenie wykresów
+
         ax1.clear()
         ax2.clear()
-        
-        # Obliczanie pozycji cząstek w czasie t
         particle_positions = []
         
         for x0, z0 in initial_positions:
-            # Przesunięcie cząstki zgodnie z polem prędkości
-            # Używamy rozwiązania analitycznego dla prędkości
+            #funkcje do liczenia ruchu czasteczek
             amplitude_x = (g * H * k / (2 * omega**2)) * (np.cosh(k * (z0 + h)) / np.cosh(k * h))
             amplitude_z = (g * H * k / (2 * omega**2)) * (np.sinh(k * (z0 + h)) / np.cosh(k * h))
             
             x = x0 + amplitude_x * np.cos(k * x0 - omega * t)
             z = z0 + amplitude_z * np.sin(k * x0 - omega * t)
             
-            # Zawijanie cząstek, które wychodzą poza obszar
+            # Zawijanie cząstek
             if x < 0:
                 x += L
             elif x > L:
@@ -710,26 +506,24 @@ def animate_wave_with_particles(N, h, L, T, H, g, duration=2.0, fps=15, particle
         # Obszar wody
         ax1.fill_between(surface_x, surface_z, -h, color='lightblue', alpha=0.4)
         
-        # Rysowanie powierzchni wody
         ax1.plot(surface_x, surface_z, 'b-', linewidth=3)
         
-        # Rysowanie cząstek
+    
         particle_x, particle_z = zip(*particle_positions)
         ax1.scatter(particle_x, particle_z, c='red', s=25, alpha=0.8)
         
-        # Ustawienia wykresu fali
+
         ax1.set_title(f'Falowanie i ruch cząstek, t = {t:.2f} s')
         ax1.set_xlabel('x [m]')
         ax1.set_ylabel('z [m]')
-        ax1.axhline(y=0, color='black', linestyle='--', alpha=0.5)  # powierzchnia morza (średni poziom)
+        ax1.axhline(y=0, color='black', linestyle='--', alpha=0.5)  
         ax1.axhline(y=-h, color='black', linestyle='-', alpha=0.7)  # dno morza
         ax1.set_xlim(0, L)
         ax1.set_ylim(-h, H)
         ax1.grid(alpha=0.3)
         
-        # Wykres profilu powierzchni fali
         ax2.plot(surface_x, surface_z, 'b-', linewidth=3)
-        ax2.axhline(y=0, color='black', linestyle='--', alpha=0.5)  # średni poziom wody
+        ax2.axhline(y=0, color='black', linestyle='--', alpha=0.5)  # woda
         ax2.fill_between(surface_x, surface_z, -H, color='lightblue', alpha=0.4)
         ax2.set_title('Profil powierzchni fali')
         ax2.set_xlabel('x [m]')
@@ -744,29 +538,58 @@ def animate_wave_with_particles(N, h, L, T, H, g, duration=2.0, fps=15, particle
     ani = FuncAnimation(fig, update, frames=num_frames, blit=False)
     plt.tight_layout()
     
-    # Zapisanie animacji do pliku
-    try:
-        ani.save('wave_animation.gif', writer='pillow', fps=fps)
-        print("Animacja zapisana jako 'wave_animation.gif'")
-    except Exception as e:
-        print(f"Nie udało się zapisać animacji: {e}")
+    ani.save('wave_animation.gif', writer='pillow', fps=fps)
+    print("Animacja zapisana jako 'wave_animation.gif'")
     
     plt.show()
     return ani
+def test_gauss_elimination():
+
+    # prosta maceiz 
+    A1 = np.array([[2, 1], [1, 2]], dtype=float)
+    b1 = np.array([4, 5], dtype=float)
+    expected1 = np.array([1, 2])
+    print("\nTest 1: Prosta macierz 2x2")
+    x1 = gauss_elimination_with_partial_pivoting(A1, b1)
+    print("Rozwiązanie:", x1)
+    print("Oczekiwane:", expected1)
+    print("Błąd:", np.linalg.norm(x1 - expected1))
+    
+
+    
+    # test maciez osobliwa
+    A3 = np.array([[1, 2], [2, 4]], dtype=float)
+    b3 = np.array([3, 6], dtype=float)
+    print("\nTest 3: Macierz osobliwa")
+    try:
+        x3 = gauss_elimination_with_partial_pivoting(A3, b3)
+        print("BŁĄD: Powinien zgłosić wyjątek dla macierzy osobliwej!")
+    except ValueError as e:
+        print("SUKCES: Zgłoszono wyjątek:", str(e))
+    
+    # test duza maciez
+    np.random.seed(42)
+    size = 20 
+    A4 = np.random.rand(size, size) + 10*np.eye(size)
+    b4 = np.random.rand(size)
+    expected4 = np.linalg.solve(A4, b4)
+    print("\nTest 4: Duża macierz losowa 20x20")
+    x4 = gauss_elimination_with_partial_pivoting(A4.copy(), b4.copy())
+    error = np.linalg.norm(x4 - expected4)
+    print("Błąd:", error)
+    print("Czy błąd < 1e-10?", error < 1e-10)
 
 def main():
-    # Parametry fizyczne
     h = 10.0      # głębokość morza [m]
     L = 50.0      # długość fali [m]
     T = 5.0       # okres fali [s]
     H = 0.5        # wysokość fali [m]
     g = 9.81       # przyspieszenie ziemskie [m/s²]
     
-    print("=== IMPLEMENTACJA METODY ELIMINACJI GAUSSA Z CZĘŚCIOWYM WYBOREM ELEMENTU PODSTAWOWEGO ===")
+   
+    # Zadanie 1: Demonstracja eliminacji Gaussa
+    print("\n[Zadanie 1] test Gaussa")
     
-    # Zadanie 1: Demonstracja eliminacji Gaussa na przykładowej macierzy
-    print("\n[Zadanie 1] Demonstracja eliminacji Gaussa")
-    # Mała przykładowa macierz dla demonstracji
     test_A = np.array([
         [2.0, 1.0, 4.0],
         [3.0, 4.0, -1.0],
@@ -774,50 +597,52 @@ def main():
     ])
     test_b = np.array([12.0, 7.0, 3.0])
     
-    print("Macierz A:")
+    print("Przykładowa macierz A:")
     print(test_A)
     print("Wektor b:")
     print(test_b)
     
     x = gauss_elimination_with_partial_pivoting(test_A, test_b)
-    print("Rozwiązanie x:")
+    print("\nRozwiązanie x:")
     print(x)
-    print("Weryfikacja Ax:")
-    print(np.dot(test_A, x))
+    print("Weryfikacja Ax - b:")
+    print(np.dot(test_A, x) - test_b)
     
-    # Zadanie 2: Rozwiązanie układu równań falowania
+    # Rozszerzone testy
+    print("\n[Zadanie 1] Rozszerzone testy poprawności")
+    test_gauss_elimination()
+    
+    # Reszta istniejącego kodu...
     print("\n[Zadanie 2] Rozwiązanie układu równań falowania")
     N = 10  # mniejsze N dla szybszej demonstracji
     
     print(f"Parametry: N={N}, h={h}m, L={L}m, T={T}s, H={H}m, g={g}m/s²")
-    
-    # Budowanie i rozwiązywanie układu równań
+
     A, b, point_to_index = build_wave_equations(N, h, L, T, H, g)
     
-    # Zadanie 3: Analiza macierzy rzadkiej
+
     print("\n[Zadanie 3] Analiza macierzy rzadkiej")
     sparse_matrix_stats(A)
     
-    # Rozwiązanie układu
+   
     phi_values = gauss_elimination_with_partial_pivoting(A, b, use_sparse=True)
     phi = {point: phi_values[idx] for point, idx in point_to_index.items()}
     
-    # Porównanie z rozwiązaniem analitycznym
+   
     max_error, mean_error = compare_with_analytic(phi, h, L, T, H, g)
     print(f"\nBłąd maksymalny: {max_error:.6e}")
     print(f"Błąd średni: {mean_error:.6e}")
     
-    # Analiza błędów
+  
     print("\nAnaliza rozkładu błędów:")
     analyze_errors(phi, h, L, T, H, g)
     
-    # Zadanie 4: Porównanie metod
-    print("\n[Zadanie 4] Porównanie z implementacją biblioteczną")
-    compare_methods([5, 8, 10], h, L, T, H, g)  # Zmniejszamy N do bezpiecznych wartości
+   
+    print("\n[Z4] porownanie")
+    compare_methods([5, 8, 10], h, L, T, H, g)
     
     visualize_potential(phi,h,L)
-    # Zadanie 5: Animacja
-    print("\n[Zadanie 5] Tworzenie animacji")
+    
     choice = input("Czy chcesz utworzyć animację? (t/n): ")
     if choice.lower() == 't':
         animate_wave_with_particles(N, h, L, T, H, g, duration=2.0, fps=15)
@@ -826,3 +651,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+#  Attribution:
+# - Fragmenty kodu  związane z tworzeniem rownan fal, czesc wizualizacji (funkcje ruchu czasteczek w animacji) zostały zainspirowane przez kod DeepseekAI
+# zakres pracy, mniej wiecej po rowno razem kodowalismy lapalismy swoje bledy etc. kazdy mial jakis udzial w kazdym z zadan 
+
