@@ -77,7 +77,7 @@ def print_verification(solutions, original_matrix, errors):
         print(f"Podstawienie: {substituted_str} = {calculated:.4f}")
         print(f"Oczekiwano: {original_matrix[i,-1]:.1f}, Błąd: {errors[i]:.10f}")
         print()
-
+    
 # Przykład użycia:
 if __name__ == "__main__":
     # Przykładowe równania:
